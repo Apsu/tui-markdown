@@ -77,7 +77,7 @@ struct TextWriter<'a, I> {
     /// Stack of line styles.
     line_styles: Vec<Style>,
 
-    /// Used to highlight code blocks, set when  a codeblock is encountered
+    /// Used to highlight code blocks, set when a codeblock is encountered.
     #[cfg(feature = "highlight-code")]
     code_highlighter: Option<HighlightLines<'a>>,
 
@@ -87,7 +87,11 @@ struct TextWriter<'a, I> {
     /// A link which will be appended to the current line when the link tag is closed.
     link: Option<CowStr<'a>>,
 
+    /// Track if we need a newline after the current line.
     needs_newline: bool,
+
+    /// Track if we just added a list item bullet/number.
+    just_added_list_item: bool,
 }
 
 #[cfg(feature = "highlight-code")]
@@ -108,6 +112,7 @@ where
             line_prefixes: vec![],
             list_indices: vec![],
             needs_newline: false,
+            just_added_list_item: false,
             #[cfg(feature = "highlight-code")]
             code_highlighter: None,
             link: None,
@@ -201,8 +206,12 @@ where
         if self.needs_newline {
             self.push_line(Line::default());
         }
-        self.push_line(Line::default());
+        // Don't create a new line if we just added a list item (bullet/number)
+        if !self.just_added_list_item {
+            self.push_line(Line::default());
+        }
         self.needs_newline = false;
+        self.just_added_list_item = false;
     }
 
     fn end_paragraph(&mut self) {
@@ -277,6 +286,7 @@ where
             self.push_span(span);
         }
         self.needs_newline = false;
+        self.just_added_list_item = false;
     }
 
     fn code(&mut self, code: CowStr<'a>) {
@@ -314,6 +324,7 @@ where
             self.push_span(span);
         }
         self.needs_newline = false;
+        self.just_added_list_item = true;
     }
 
     fn soft_break(&mut self) {
@@ -505,7 +516,7 @@ mod tests {
         assert_eq!(
             from_str(indoc! {"
                 Paragraph 1
-                
+
                 Paragraph 2
             "}),
             Text::from_iter(["Paragraph 1", "", "Paragraph 2",])
@@ -704,7 +715,7 @@ mod tests {
                     .with_text(\"Hello, highlighted code!\")
                     .build()
                     .show();
-                            
+
             }
             ```"});
 
