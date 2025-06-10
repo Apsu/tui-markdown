@@ -222,6 +222,9 @@ where
         if self.needs_newline {
             self.push_line(Line::default());
         }
+        // Start a new line for the heading
+        self.push_line(Line::default());
+
         let style = match level {
             HeadingLevel::H1 => styles::H1,
             HeadingLevel::H2 => styles::H2,
@@ -230,12 +233,18 @@ where
             HeadingLevel::H5 => styles::H5,
             HeadingLevel::H6 => styles::H6,
         };
+
+        // Add the "# " prefix as a span
         let content = format!("{} ", "#".repeat(level as usize));
-        self.push_line(Line::styled(content, style));
+        self.push_span(Span::styled(content, style));
+
+        // Push the heading style onto inline_styles so heading text gets styled
+        self.push_inline_style(style);
         self.needs_newline = false;
     }
 
     fn end_heading(&mut self) {
+        self.pop_inline_style();
         self.needs_newline = true
     }
 
@@ -715,7 +724,7 @@ mod tests {
                     .with_text(\"Hello, highlighted code!\")
                     .build()
                     .show();
-
+                            
             }
             ```"});
 
@@ -727,17 +736,17 @@ mod tests {
     #[rstest]
     fn unhighlighted_code(_with_tracing: DefaultGuard) {
         // Assert no extra newlines are added
-        let unhiglighted_code = from_str(indoc! {"
+        let unhighlighted_code = from_str(indoc! {"
             ```rust
             fn main() {
                 println!(\"Hello, unhighlighted code!\");
             }
             ```"});
 
-        insta::assert_snapshot!(unhiglighted_code);
+        insta::assert_snapshot!(unhighlighted_code);
 
         // Code highlighting is complex, assert on on the debug snapshot
-        insta::assert_debug_snapshot!(unhiglighted_code);
+        insta::assert_debug_snapshot!(unhighlighted_code);
     }
 
     #[rstest]
